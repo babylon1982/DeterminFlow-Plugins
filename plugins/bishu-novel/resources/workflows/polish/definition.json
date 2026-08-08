@@ -34,42 +34,12 @@
       "fail_auto_skip": false
     },
     {
-      "id": "script_ai_detect",
-      "label": "AI 检测",
-      "node_type": "script",
-      "agent_type": "default",
-      "system_prompt_template": "",
-      "first_message": "",
-      "position": {
-        "x": 160,
-        "y": 280
-      },
-      "var_bindings": {},
-      "node_params": {
-        "script_source": "library",
-        "script_type": "python",
-        "script_name": "ai_detect",
-        "script_args": "--body-file story/{{chapter_number}}/chapter.md --output cache/ai_issues.txt",
-        "timeout": 30,
-        "script_group": "nvl"
-      },
-      "auto_flow": false,
-      "enable_complete_node_task": true,
-      "output_variable": "",
-      "enable_reject_upstream": false,
-      "max_reject_count": 3,
-      "save_output_to_file": false,
-      "output_file_path": "",
-      "sub_workflow_params": {},
-      "fail_auto_skip": false
-    },
-    {
       "id": "agent_sc",
       "label": "自审",
       "node_type": "agent",
       "agent_type": "novel-self-critic",
       "system_prompt_template": "",
-      "first_message": "扫描本章的 AI 生成模式。直接输出纯 JSON，引擎自动保存。\n\n==== 外部 AI 检测报告 ====\n{{ai_issues_file}}\n\n==== 章节正文 ====\n{{chapter_file}}\n\n输出语言：{{language}}。",
+      "first_message": "扫描本章的 AI 生成模式。直接输出纯 JSON，引擎自动保存。\n\n==== 章节正文 ====\n{{chapter_file}}\n\n输出语言：{{language}}。",
       "position": {
         "x": 380,
         "y": 260
@@ -200,13 +170,8 @@
       "target": "script_sync_down"
     },
     {
-      "id": "edge-sync_down-ai_detect",
+      "id": "edge-sync_down-sc",
       "source": "script_sync_down",
-      "target": "script_ai_detect"
-    },
-    {
-      "id": "edge-ai_detect-sc",
-      "source": "script_ai_detect",
       "target": "agent_sc"
     },
     {
@@ -261,18 +226,6 @@
       "hidden": true
     },
     {
-      "key": "ai_issues_file",
-      "name": "AI 检测报告",
-      "type": "file",
-      "default": "cache/ai_issues.txt",
-      "required": false,
-      "description": "humanize-chinese 检测结果，注入 SC 首条消息",
-      "options": [],
-      "source_type": "input",
-      "source_node_id": "",
-      "hidden": true
-    },
-    {
       "key": "critique_file",
       "name": "自审笔记",
       "type": "file",
@@ -315,7 +268,6 @@
       "id": "scheme-21478788",
       "name": "润色",
       "selected_node_ids": [
-        "script_ai_detect",
         "agent_sc",
         "agent_pl",
         "agent_pp"
@@ -328,7 +280,6 @@
       "name": "仅检查",
       "selected_node_ids": [
         "script_sync_down",
-        "script_ai_detect",
         "agent_sc"
       ],
       "created_at": "2026-06-11T21:59:10.550351+08:00",

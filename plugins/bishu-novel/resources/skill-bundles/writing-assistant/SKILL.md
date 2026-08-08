@@ -116,8 +116,7 @@ TaskRef，避免把上一条 Workflow 的结果当成当前结果。
 先做了 `post-hoc`，随后润色又改变了情节事实，应重新运行该章 `post-hoc`；纯措辞调整不必
 重复。
 
-`polish` 会覆盖 `story/<章节号>/chapter.md`，并依赖可访问的
-`AI_DETECT_GATEWAY_URL`。网关未配置时不要声称可以完成完整润色。
+`polish` 会覆盖 `story/<章节号>/chapter.md`。运行前确认已有章节正文，并向用户说明覆盖风险。
 
 ## 对用户的汇报方式
 

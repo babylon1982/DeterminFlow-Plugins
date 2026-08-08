@@ -11,7 +11,7 @@ Resource Resolver（资源解析器）映射为最终 ID；插件代码不拼接
 | `outline` | 卷纲、近纲 | 大纲版本与 Markdown |
 | `mvp` | 世界状态、导演、角色状态、写手、整合 | 章节正文与中间状态 |
 | `post-hoc` | 章节观察、裁决、状态回写 | 世界/角色差异、伏笔与债务 |
-| `polish` | 自审、AI 检测、两阶段润色 | 新的章节正文版本 |
+| `polish` | 自审、两阶段润色 | 新的章节正文版本 |
 
 新书建议按 `build` → `character` → `story-plan` → `outline` 建立生产前置。单章循环建议按
 `mvp` → 可选 `polish` → `post-hoc` 执行，再进入下一章。若先做 `post-hoc`、后续润色又

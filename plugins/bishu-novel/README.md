@@ -27,7 +27,6 @@ Workflow Workspace（工作流工作区）中。
 
 - DeterminFlow Core `v0.1.0` 或兼容版本
 - Core `main` Agent 使用的默认模型和凭据需要完成配置
-- `polish` 使用 AI Detect 节点时，需要配置可访问的 `AI_DETECT_GATEWAY_URL`
 
 安装后不需要数据库、迁移、API、HMAC Key 或 UUID。运行每条 Workflow 时，为同一本书
 填写相同的 `workspace_override`，例如 `data/books/my-novel`。书籍目录名由用户自行决定，

@@ -15,7 +15,6 @@ EXPECTED_WORKFLOWS = {
     "story-plan",
 }
 EXPECTED_SCRIPT_LIBRARIES = {
-    "ai_detect",
     "cm_post",
     "json_to_md",
     "local_archive",
@@ -159,6 +158,38 @@ def test_workflows_do_not_require_database_or_book_ids() -> None:
         assert "uuid" not in content
         assert "db_sync" not in content
         assert "json_to_db" not in content
+
+
+def test_polish_has_no_hidden_external_detection_dependency() -> None:
+    resources = PLUGIN_ROOT / "resources"
+    polish = _json(resources / "workflows" / "polish" / "definition.json")
+
+    assert "script_ai_detect" not in {
+        node["id"] for node in polish["nodes"]
+    }
+    assert "ai_detect" not in {
+        node.get("node_params", {}).get("script_name")
+        for node in polish["nodes"]
+    }
+    assert "ai_issues_file" not in {
+        variable["key"] for variable in polish["variables"]
+    }
+    assert not (
+        resources / "script-library" / "nvl" / "ai_detect"
+    ).exists()
+
+    public_polish_text = json.dumps(polish, ensure_ascii=False).lower()
+    script_library_text = "\n".join(
+        path.read_text(encoding="utf-8").lower()
+        for path in (resources / "script-library").rglob("*.py")
+    )
+    for marker in {
+        "".join(("ai_detect_", "gateway_url")),
+        ".".join(("host", "docker", "internal")),
+        "-".join(("humanize", "chinese")),
+    }:
+        assert marker not in public_polish_text
+        assert marker not in script_library_text
 
 
 def test_agents_inherit_core_main_model() -> None:
