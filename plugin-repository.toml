@@ -4,3 +4,7 @@ name = "DeterminFlow Official Plugins"
 [[plugins]]
 id = "bishu-novel"
 subdirectory = "plugins/bishu-novel"
+
+[[plugins]]
+id = "public-api"
+subdirectory = "plugins/public-api"
