@@ -584,7 +584,12 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
         )
         pending = await service.start_login()
         assert pending.login_pending is True
-        assert pending.header_status is None
+        assert pending.header_status is not None
+        assert pending.header_status.value == "登录中"
+        assert pending.header_status.refresh_after_ms == 1000
+        assert [action.label for action in pending.header_status.actions] == [
+            "取消登录"
+        ]
         assert pending.login_endpoint == "/api/public-api/login"
         login_task = service._login_task
         assert login_task is not None

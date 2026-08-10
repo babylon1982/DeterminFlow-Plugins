@@ -521,6 +521,30 @@ class PublicApiCredentialService:
         }
 
     def _header_status(self, status: PublicApiStatus) -> HeaderStatus | None:
+        if status.login_pending and status.quota is None and status.ui.login_enabled:
+            now = self._clock()
+            return HeaderStatus(
+                visible=True,
+                label="公益",
+                value="登录中",
+                title="公益模型账号登录",
+                summary="请在浏览器完成登录",
+                summary_href=status.ui.official_url,
+                tone="normal",
+                metrics=[],
+                metadata=[HeaderStatusMetric(label="身份", value="等待登录")],
+                actions=[
+                    HeaderStatusAction(
+                        id="account",
+                        label="取消登录",
+                        kind="request",
+                        endpoint="/api/public-api/login",
+                        method="DELETE",
+                    )
+                ],
+                refresh_after_ms=1000,
+                updated_at=now,
+            )
         if status.state not in {"active", "degraded"} or status.quota is None:
             return None
 

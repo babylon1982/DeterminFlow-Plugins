@@ -1,3 +1,3 @@
 """Optional public model Provider lifecycle for DeterminFlow."""
 
-__version__ = "0.1.24"
+__version__ = "0.1.25"
