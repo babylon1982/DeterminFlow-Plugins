@@ -624,6 +624,73 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
     asyncio.run(scenario())
 
 
+def test_failed_authenticated_refresh_restores_anonymous_status(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            response = credential_response(
+                now,
+                access_tier=(
+                    "authenticated"
+                    if request.headers.get("authorization")
+                    else "anonymous"
+                ),
+            )
+            if request.headers.get("authorization"):
+                response["account_balance_usd"] = None
+            return httpx.Response(200, json=response)
+
+        service, _providers = build_service(
+            tmp_path,
+            handler,
+            clock=lambda: now,
+            browser_auth=FakeBrowserAuthorization(),
+        )
+        await service.ensure_credential()
+        await service.start_login()
+        login_task = service._login_task
+        assert login_task is not None
+        await login_task
+        status = service.status()
+
+        assert status.signed_in is False
+        assert status.access_tier == "anonymous"
+        assert status.last_error == "公益模型账户余额暂不可用"
+        assert status.header_status is not None
+        assert status.header_status.title == "公益模型匿名额度"
+
+    asyncio.run(scenario())
+
+
+def test_status_survives_a_legacy_session_without_account_balance(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=credential_response(now))
+
+        service, _providers = build_service(tmp_path, handler, clock=lambda: now)
+        await service.ensure_credential()
+        service.state["portal_session"] = {
+            "access_token": "legacy-access",
+            "refresh_token": "legacy-refresh",
+        }
+        status = service.status()
+
+        assert status.signed_in is True
+        assert status.account_balance_usd is None
+        assert status.header_status is not None
+        assert status.header_status.value == "¥0.75"
+        assert [metric.value for metric in status.header_status.metrics] == [
+            "¥0.75",
+            "—",
+            "¥4.75",
+        ]
+
+    asyncio.run(scenario())
+
+
 def test_backend_ui_capabilities_drive_header_actions(tmp_path: Path) -> None:
     async def scenario() -> None:
         now = datetime(2026, 8, 8, 8, tzinfo=UTC)

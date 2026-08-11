@@ -313,6 +313,7 @@ class PublicApiCredentialService:
 
     async def _complete_browser_login(self) -> None:
         assert self.portal is not None
+        previous_session = self.state.get("portal_session")
         try:
             tokens = await self._browser_auth.authorize(
                 self.portal,
@@ -323,10 +324,20 @@ class PublicApiCredentialService:
                 self.state["last_error"] = None
                 self._save_state()
                 await self._ensure_locked(force=True)
+                credential = self._credential()
+                if not (
+                    self._session() is not None
+                    and credential is not None
+                    and credential.get("authenticated") is True
+                ):
+                    message = self.state.get("last_error")
+                    if isinstance(message, str):
+                        raise PortalRequestError("login_failed", message)
         except asyncio.CancelledError:
             raise
         except PortalRequestError as exc:
             async with self._lock:
+                self.state["portal_session"] = previous_session
                 self.state["last_error"] = exc.message
                 self._save_state()
         finally:
@@ -549,9 +560,7 @@ class PublicApiCredentialService:
             return None
 
         is_account = status.signed_in
-        if is_account and status.account_balance_usd is None:
-            return None
-        wallet_amount = status.account_balance_usd if is_account else 0
+        wallet_amount = status.account_balance_usd or 0
         assert wallet_amount is not None
         amount = status.quota.remaining_usd + wallet_amount
         measured_at = status.quota.measured_at
@@ -614,7 +623,11 @@ class PublicApiCredentialService:
             metrics.append(
                 HeaderStatusMetric(
                     label="充值余额",
-                    value=self._money(wallet_amount),
+                    value=(
+                        self._money(status.account_balance_usd)
+                        if status.account_balance_usd is not None
+                        else "—"
+                    ),
                 )
             )
             metrics.append(
