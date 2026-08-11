@@ -26,7 +26,7 @@ def test_manifest_catalog_and_static_page_define_one_optional_plugin() -> None:
 
     assert extension["id"] == "public-api"
     assert extension["name"] == "笔枢公益模型"
-    assert extension["version"] == "0.1.28"
+    assert extension["version"] == "0.1.30"
     assert extension["description"] == "由笔枢写作免费提供的模型体验服务。"
     assert extension["backend"].startswith("determinflow_plugin_public_api.")
     assert "settings" not in manifest
@@ -70,7 +70,7 @@ def test_extension_is_inert_outside_windows_desktop(
         manifest = ExtensionManifest(
             extension_id="public-api",
             name="笔枢公益模型",
-            version="0.1.28",
+            version="0.1.30",
         )
         contributions = ExtensionContributions()
         extension.register(ExtensionRegistrar(manifest, contributions))
@@ -133,9 +133,14 @@ def test_ui_uses_external_browser_login_without_collecting_credentials() -> None
     assert page.count('class="price-heading"') == 3
     assert "button-accent" in page
     assert "匿名 ·" not in page
-    assert "公益可用" in page
-    assert "今日限额余量" in page
-    assert "本周限额余量" in page
+    assert "合计可用" not in page
+    assert "公益可用" not in page
+    assert "今日限额余量" not in page
+    assert "本周限额余量" not in page
+    assert "今日免费额度" in page
+    assert "本周免费额度" in page
+    assert 'id="wallet-row" hidden' in page
+    assert "elements.walletRow.hidden = !status.signed_in" in script
     assert 'id="error"' in page
     assert "accessLabel(status)" in script
-    assert "status.quota?.daily_limit_usd" in script
+    assert "status.quota?.remaining_usd" in script

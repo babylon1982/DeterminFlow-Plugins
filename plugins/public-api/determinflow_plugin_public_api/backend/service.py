@@ -614,8 +614,9 @@ class PublicApiCredentialService:
         if status.state not in {"active", "degraded"} or status.quota is None:
             return None
 
-        is_account = status.signed_in
-        wallet_amount = status.account_balance_usd or 0
+        is_account = status.access_tier == "authenticated"
+        is_restricted = status.access_tier == "restricted"
+        wallet_amount = (status.account_balance_usd or 0) if is_account else 0
         assert wallet_amount is not None
         amount = status.quota.remaining_usd + wallet_amount
         measured_at = status.quota.measured_at
@@ -667,14 +668,13 @@ class PublicApiCredentialService:
                 )
             )
 
-        metrics: list[HeaderStatusMetric] = [
-            HeaderStatusMetric(
-                label="公益可用",
-                value=self._money(status.quota.remaining_usd),
-            )
-        ]
+        metrics: list[HeaderStatusMetric]
         if is_account:
-            metrics.append(
+            metrics = [
+                HeaderStatusMetric(
+                    label="今日免费额度",
+                    value=self._money(status.quota.remaining_usd),
+                ),
                 HeaderStatusMetric(
                     label="充值余额",
                     value=(
@@ -682,9 +682,32 @@ class PublicApiCredentialService:
                         if status.account_balance_usd is not None
                         else "—"
                     ),
+                ),
+                HeaderStatusMetric(
+                    label="本周免费额度",
+                    value=self._money(
+                        max(
+                            0,
+                            status.quota.weekly_limit_usd
+                            - status.quota.weekly_used_usd,
+                        )
+                    ),
+                ),
+            ]
+        else:
+            daily_remaining = (
+                status.quota.remaining_usd
+                if is_restricted
+                else max(
+                    0,
+                    status.quota.daily_limit_usd - status.quota.daily_used_usd,
                 )
             )
-            metrics.append(
+            metrics = [
+                HeaderStatusMetric(
+                    label="今日限额余量",
+                    value=self._money(daily_remaining),
+                ),
                 HeaderStatusMetric(
                     label="本周限额余量",
                     value=self._money(
@@ -694,54 +717,11 @@ class PublicApiCredentialService:
                             - status.quota.weekly_used_usd,
                         )
                     ),
-                )
-            )
-        else:
-            if status.quota.daily_limit_usd > 0:
-                metrics.append(
-                    HeaderStatusMetric(
-                        label="今日限额余量",
-                        value=self._money(
-                            max(
-                                0,
-                                status.quota.daily_limit_usd
-                                - status.quota.daily_used_usd,
-                            )
-                        ),
-                    )
-                )
-            if status.quota.weekly_limit_usd > 0:
-                metrics.append(
-                    HeaderStatusMetric(
-                        label="本周限额余量",
-                        value=self._money(
-                            max(
-                                0,
-                                status.quota.weekly_limit_usd
-                                - status.quota.weekly_used_usd,
-                            )
-                        ),
-                    )
-                )
+                ),
+            ]
 
-        return HeaderStatus(
-            visible=True,
-            label="余",
-            value=self._money(amount),
-            title="公益模型额度",
-            summary=(
-                "请在浏览器完成登录"
-                if status.login_pending
-                else (
-                    f"更新失败：{status.last_error}"
-                    if status.last_error
-                    else status.ui.attribution
-                )
-            ),
-            summary_href=status.ui.official_url,
-            tone=tone,
-            metrics=metrics,
-            metadata=[
+        metadata = (
+            [
                 HeaderStatusMetric(
                     label="身份",
                     value=self._identity_label(status),
@@ -758,7 +738,29 @@ class PublicApiCredentialService:
                     label="更新时间",
                     value=self._display_time(measured_at),
                 ),
-            ],
+            ]
+            if status.signed_in
+            else []
+        )
+
+        return HeaderStatus(
+            visible=True,
+            label="公益",
+            value=self._money(amount),
+            title="公益模型额度",
+            summary=(
+                "请在浏览器完成登录"
+                if status.login_pending
+                else (
+                    f"更新失败：{status.last_error}"
+                    if status.last_error
+                    else status.ui.attribution
+                )
+            ),
+            summary_href=status.ui.official_url,
+            tone=tone,
+            metrics=metrics,
+            metadata=metadata,
             actions=actions,
             refresh_after_ms=1000 if status.login_pending else None,
             updated_at=measured_at,

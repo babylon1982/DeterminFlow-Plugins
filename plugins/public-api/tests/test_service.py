@@ -282,30 +282,20 @@ def test_anonymous_credential_becomes_default_without_duplicate_key_storage(
         assert status.signed_in is False
         assert status.account_balance_usd is None
         assert status.header_status is not None
+        assert status.header_status.label == "公益"
         assert status.header_status.value == "¥0.75"
         assert status.header_status.title == "公益模型额度"
         assert status.header_status.summary == "由笔枢写作（网页版）免费提供"
         assert status.header_status.summary_href == "https://bishuxiezuo.cn/"
         assert [metric.label for metric in status.header_status.metrics] == [
-            "公益可用",
             "今日限额余量",
             "本周限额余量",
         ]
         assert [metric.value for metric in status.header_status.metrics] == [
-            "¥0.75",
             "¥1.25",
             "¥4.75",
         ]
-        assert [item.label for item in status.header_status.metadata] == [
-            "身份",
-            "额度状态",
-            "有效期至",
-            "更新时间",
-        ]
-        assert status.header_status.metadata[0].value == "匿名"
-        assert status.header_status.metadata[1].value == "标准"
-        assert status.header_status.metadata[2].value == "08-09 16:00"
-        assert status.header_status.metadata[3].value == "08-08 16:00"
+        assert status.header_status.metadata == []
         assert [action.id for action in status.header_status.actions] == [
             "models",
             "account",
@@ -436,13 +426,13 @@ def test_development_allows_loopback_http_services(tmp_path: Path) -> None:
             tmp_path,
             app_version="0.1.2",
             release_channel="development",
+            clock=lambda: now,
             portal=portal,
             catalog=PublicModelCatalogClient(
                 app_version="0.1.2",
                 transport=httpx.MockTransport(catalog_handler),
             ),
             providers=providers,
-            clock=lambda: now,
         )
 
         status = await service.ensure_credential()
@@ -717,12 +707,13 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
         assert status.account_balance_usd == 8.5
         assert status.account_display_name == "测试作者"
         assert status.header_status is not None
+        assert status.header_status.label == "公益"
         assert status.header_status.value == "¥9.25"
         assert status.header_status.title == "公益模型额度"
         assert [metric.label for metric in status.header_status.metrics] == [
-            "公益可用",
+            "今日免费额度",
             "充值余额",
-            "本周限额余量",
+            "本周免费额度",
         ]
         assert [metric.value for metric in status.header_status.metrics] == [
             "¥0.75",
@@ -804,9 +795,12 @@ def test_status_survives_a_legacy_session_without_account_balance(tmp_path: Path
         assert status.account_balance_usd is None
         assert status.header_status is not None
         assert status.header_status.value == "¥0.75"
+        assert [metric.label for metric in status.header_status.metrics] == [
+            "今日限额余量",
+            "本周限额余量",
+        ]
         assert [metric.value for metric in status.header_status.metrics] == [
-            "¥0.75",
-            "—",
+            "¥1.25",
             "¥4.75",
         ]
 
@@ -1068,6 +1062,17 @@ def test_restricted_credential_uses_anonymous_renewal_window(tmp_path: Path) -> 
         assert status.signed_in is True
         assert status.access_tier == "restricted"
         assert status.header_status is not None
+        assert status.header_status.label == "公益"
+        assert status.header_status.value == "¥0.75"
+        assert [metric.label for metric in status.header_status.metrics] == [
+            "今日限额余量",
+            "本周限额余量",
+        ]
+        assert [metric.value for metric in status.header_status.metrics] == [
+            "¥0.75",
+            "¥4.75",
+        ]
+        assert all(metric.label != "充值余额" for metric in status.header_status.metrics)
         assert status.header_status.metadata[0].value == "已登录"
         assert status.header_status.metadata[1].value == "受限"
         assert status.renewal_due_at == now + timedelta(hours=18)

@@ -2,10 +2,9 @@ const elements = {
   summary: document.querySelector("#summary"),
   state: document.querySelector("#state"),
   tier: document.querySelector("#tier"),
-  available: document.querySelector("#available"),
-  publicBenefit: document.querySelector("#public-benefit"),
   dailyBenefit: document.querySelector("#daily-benefit"),
   weeklyBenefit: document.querySelector("#weekly-benefit"),
+  walletRow: document.querySelector("#wallet-row"),
   wallet: document.querySelector("#wallet"),
   expiry: document.querySelector("#expiry"),
   modelCount: document.querySelector("#model-count"),
@@ -198,22 +197,14 @@ function render(status) {
         : `匿名体验 · ${status.models.length} 个可用模型`))
     : (status.last_error || "暂时无法获取公益模型额度");
   elements.tier.textContent = accessLabel(status);
-  const benefitAvailable = status.quota?.remaining_usd;
   const wallet = status.signed_in ? status.account_balance_usd : null;
-  const availableBalance = Number.isFinite(benefitAvailable)
-    ? benefitAvailable + (Number.isFinite(wallet) ? wallet : 0)
-    : null;
-  elements.available.textContent = money(availableBalance);
-  elements.publicBenefit.textContent = money(benefitAvailable);
-  elements.dailyBenefit.textContent = money(remaining(
-    status.quota?.daily_limit_usd,
-    status.quota?.daily_used_usd,
-  ));
+  elements.dailyBenefit.textContent = money(status.quota?.remaining_usd);
+  elements.walletRow.hidden = !status.signed_in;
+  elements.wallet.textContent = money(wallet);
   elements.weeklyBenefit.textContent = money(remaining(
     status.quota?.weekly_limit_usd,
     status.quota?.weekly_used_usd,
   ));
-  elements.wallet.textContent = money(wallet);
   elements.expiry.textContent = formatDate(status.expires_at);
   elements.modelCount.textContent = status.models.length
     ? `${status.models.length} 个`
