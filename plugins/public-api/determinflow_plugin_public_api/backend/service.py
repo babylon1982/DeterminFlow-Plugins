@@ -695,14 +695,16 @@ class PublicApiCredentialService:
                 ),
             ]
         else:
-            daily_remaining = (
-                status.quota.remaining_usd
-                if is_restricted
-                else max(
-                    0,
-                    status.quota.daily_limit_usd - status.quota.daily_used_usd,
-                )
+            daily_window_remaining = max(
+                0,
+                status.quota.daily_limit_usd - status.quota.daily_used_usd,
             )
+            daily_remaining = daily_window_remaining
+            if is_restricted:
+                daily_remaining = min(
+                    max(0, status.quota.remaining_usd),
+                    daily_window_remaining,
+                )
             metrics = [
                 HeaderStatusMetric(
                     label="今日限额余量",
@@ -720,28 +722,24 @@ class PublicApiCredentialService:
                 ),
             ]
 
-        metadata = (
-            [
-                HeaderStatusMetric(
-                    label="身份",
-                    value=self._identity_label(status),
-                ),
-                HeaderStatusMetric(
-                    label="额度状态",
-                    value=self._tier_label(status.access_tier),
-                ),
-                HeaderStatusMetric(
-                    label="有效期至",
-                    value=self._display_time(status.expires_at),
-                ),
-                HeaderStatusMetric(
-                    label="更新时间",
-                    value=self._display_time(measured_at),
-                ),
-            ]
-            if status.signed_in
-            else []
-        )
+        metadata = [
+            HeaderStatusMetric(
+                label="身份",
+                value=self._identity_label(status),
+            ),
+            HeaderStatusMetric(
+                label="额度状态",
+                value=self._tier_label(status.access_tier),
+            ),
+            HeaderStatusMetric(
+                label="有效期至",
+                value=self._display_time(status.expires_at),
+            ),
+            HeaderStatusMetric(
+                label="更新时间",
+                value=self._display_time(measured_at),
+            ),
+        ]
 
         return HeaderStatus(
             visible=True,

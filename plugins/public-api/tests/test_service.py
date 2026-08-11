@@ -83,6 +83,8 @@ def credential_response(
     access_tier: str = "anonymous",
     ttl: timedelta = timedelta(days=1),
     remaining_usd: float = 0.75,
+    daily_limit_usd: float | None = None,
+    daily_used_usd: float | None = None,
     login_enabled: bool = True,
     payment_enabled: bool = False,
     payment_url: str | None = None,
@@ -105,8 +107,16 @@ def credential_response(
             "remaining_usd": remaining_usd,
             "total_limit_usd": 10 if authenticated else 1,
             "total_used_usd": 1.25 if authenticated else 1 - remaining_usd,
-            "daily_limit_usd": 3 if authenticated else 1.5,
-            "daily_used_usd": 2.25 if authenticated else 0.25,
+            "daily_limit_usd": (
+                daily_limit_usd
+                if daily_limit_usd is not None
+                else (3 if authenticated else 1.5)
+            ),
+            "daily_used_usd": (
+                daily_used_usd
+                if daily_used_usd is not None
+                else (2.25 if authenticated else 0.25)
+            ),
             "weekly_limit_usd": 10 if authenticated else 6,
             "weekly_used_usd": 1.25,
             "measured_at": now.isoformat(),
@@ -295,7 +305,16 @@ def test_anonymous_credential_becomes_default_without_duplicate_key_storage(
             "¥1.25",
             "¥4.75",
         ]
-        assert status.header_status.metadata == []
+        assert [item.label for item in status.header_status.metadata] == [
+            "身份",
+            "额度状态",
+            "有效期至",
+            "更新时间",
+        ]
+        assert status.header_status.metadata[0].value == "匿名"
+        assert status.header_status.metadata[1].value == "标准"
+        assert status.header_status.metadata[2].value == "08-09 16:00"
+        assert status.header_status.metadata[3].value == "08-08 16:00"
         assert [action.id for action in status.header_status.actions] == [
             "models",
             "account",
@@ -1031,7 +1050,25 @@ def test_invalid_refresh_falls_back_to_anonymous_without_core_account_state(
     asyncio.run(scenario())
 
 
-def test_restricted_credential_uses_anonymous_renewal_window(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    (
+        "restricted_remaining_usd",
+        "daily_limit_usd",
+        "daily_used_usd",
+        "expected_daily_remaining",
+    ),
+    [
+        (0.5, 1.5, 0.25, "¥0.50"),
+        (0.75, 1.5, 1.25, "¥0.25"),
+    ],
+)
+def test_restricted_credential_uses_lower_daily_limit_and_anonymous_renewal_window(
+    tmp_path: Path,
+    restricted_remaining_usd: float,
+    daily_limit_usd: float,
+    daily_used_usd: float,
+    expected_daily_remaining: str,
+) -> None:
     async def scenario() -> None:
         now = datetime(2026, 8, 8, 8, tzinfo=UTC)
 
@@ -1042,6 +1079,9 @@ def test_restricted_credential_uses_anonymous_renewal_window(tmp_path: Path) -> 
                     now,
                     access_tier="restricted",
                     ttl=timedelta(days=1),
+                    remaining_usd=restricted_remaining_usd,
+                    daily_limit_usd=daily_limit_usd,
+                    daily_used_usd=daily_used_usd,
                 ),
             )
 
@@ -1063,13 +1103,13 @@ def test_restricted_credential_uses_anonymous_renewal_window(tmp_path: Path) -> 
         assert status.access_tier == "restricted"
         assert status.header_status is not None
         assert status.header_status.label == "公益"
-        assert status.header_status.value == "¥0.75"
+        assert status.header_status.value == f"¥{restricted_remaining_usd:.2f}"
         assert [metric.label for metric in status.header_status.metrics] == [
             "今日限额余量",
             "本周限额余量",
         ]
         assert [metric.value for metric in status.header_status.metrics] == [
-            "¥0.75",
+            expected_daily_remaining,
             "¥4.75",
         ]
         assert all(metric.label != "充值余额" for metric in status.header_status.metrics)
