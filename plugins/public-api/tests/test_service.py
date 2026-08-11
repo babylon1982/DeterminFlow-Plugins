@@ -530,6 +530,112 @@ def test_failed_renewal_keeps_unexpired_provider_and_reports_degradation(
     asyncio.run(scenario())
 
 
+def test_failed_anonymous_reissue_after_logout_keeps_header_status_visible(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/desktop-auth/logout":
+                return httpx.Response(204)
+            if request.headers.get("authorization"):
+                return httpx.Response(
+                    200,
+                    json=credential_response(
+                        now,
+                        access_tier="authenticated",
+                        ttl=timedelta(days=7),
+                    ),
+                )
+            return httpx.Response(503, json={"detail": "temporarily unavailable"})
+
+        service, providers = build_service(
+            tmp_path,
+            handler,
+            clock=lambda: now,
+            browser_auth=FakeBrowserAuthorization(),
+        )
+        await service.start_login()
+        assert service._login_task is not None
+        await service._login_task
+        assert service.status().signed_in is True
+
+        status = await service.logout()
+
+        assert status.state == "unavailable"
+        assert status.signed_in is False
+        assert status.last_error == "公益模型服务暂不可用"
+        assert status.header_status is not None
+        assert status.header_status.value == "异常"
+        assert status.header_status.summary == "更新失败：公益模型服务暂不可用"
+        assert [action.id for action in status.header_status.actions] == [
+            "models",
+            "account",
+        ]
+        assert status.header_status.actions[-1].label == "登录笔枢"
+        assert "determinflow-public" not in providers.providers
+
+    asyncio.run(scenario())
+
+
+def test_logout_transition_keeps_a_pollable_header_status(tmp_path: Path) -> None:
+    now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=credential_response(now))
+
+    service, _providers = build_service(tmp_path, handler, clock=lambda: now)
+    service._logout_in_progress = True
+
+    status = service.status()
+
+    assert status.header_status is not None
+    assert status.header_status.value == "更新中"
+    assert status.header_status.refresh_after_ms == 1000
+    assert status.header_status.metadata[0].value == "正在退出"
+
+
+def test_repeated_login_and_logout_never_hides_header_status(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/desktop-auth/logout":
+                return httpx.Response(204)
+            access_tier = (
+                "authenticated"
+                if request.headers.get("authorization")
+                else "anonymous"
+            )
+            return httpx.Response(
+                200,
+                json=credential_response(now, access_tier=access_tier),
+            )
+
+        service, _providers = build_service(
+            tmp_path,
+            handler,
+            clock=lambda: now,
+            browser_auth=FakeBrowserAuthorization(),
+        )
+
+        for _ in range(3):
+            pending = await service.start_login()
+            assert pending.header_status is not None
+            assert service._login_task is not None
+            await service._login_task
+            signed_in = service.status()
+            assert signed_in.signed_in is True
+            assert signed_in.header_status is not None
+
+            anonymous = await service.logout()
+            assert anonymous.signed_in is False
+            assert anonymous.header_status is not None
+
+    asyncio.run(scenario())
+
+
 def test_expired_provider_is_removed_when_portal_is_unavailable(tmp_path: Path) -> None:
     async def scenario() -> None:
         current = [datetime(2026, 8, 8, 8, tzinfo=UTC)]

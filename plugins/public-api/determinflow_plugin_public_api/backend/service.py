@@ -65,6 +65,7 @@ class PublicApiCredentialService:
         self._lock = asyncio.Lock()
         self._scheduler_task: asyncio.Task[None] | None = None
         self._login_task: asyncio.Task[None] | None = None
+        self._logout_in_progress = False
         self._browser_auth = browser_auth or BrowserAuthorizationFlow()
         self._runtime_ui: PublicApiClientUI | None = None
         self._runtime_ui_fetched_at: datetime | None = None
@@ -358,23 +359,28 @@ class PublicApiCredentialService:
         if self.portal is None:
             raise PortalRequestError("service_unavailable", "公益模型服务未启用")
         async with self._lock:
-            session = self._session()
-            if session:
-                try:
-                    await self.portal.logout(session["refresh_token"])
-                except PortalRequestError:
-                    logger.info("笔枢远端退出失败，继续清除本地登录状态")
-            credential = self._credential()
-            if credential:
-                try:
-                    await self._remove_managed_provider(credential)
-                except ProviderRequestError:
-                    logger.warning("退出时无法移除公益模型 Provider")
-            self.state["portal_session"] = None
-            self.state["credential"] = None
-            self.state["last_error"] = None
-            self._save_state()
-            return await self._ensure_locked(force=True)
+            self._logout_in_progress = True
+            try:
+                session = self._session()
+                if session:
+                    try:
+                        await self.portal.logout(session["refresh_token"])
+                    except PortalRequestError:
+                        logger.info("笔枢远端退出失败，继续清除本地登录状态")
+                credential = self._credential()
+                if credential:
+                    try:
+                        await self._remove_managed_provider(credential)
+                    except ProviderRequestError:
+                        logger.warning("退出时无法移除公益模型 Provider")
+                self.state["portal_session"] = None
+                self.state["credential"] = None
+                self.state["last_error"] = None
+                self._save_state()
+                await self._ensure_locked(force=True)
+            finally:
+                self._logout_in_progress = False
+        return self.status()
 
     async def _request_and_apply(
         self,
@@ -552,6 +558,57 @@ class PublicApiCredentialService:
                     )
                 ],
                 refresh_after_ms=1000,
+                updated_at=now,
+            )
+        if status.quota is None and self._logout_in_progress:
+            now = self._clock()
+            return HeaderStatus(
+                visible=True,
+                label="公益",
+                value="更新中",
+                title="公益模型账号切换",
+                summary="正在切换为匿名体验",
+                tone="normal",
+                metrics=[],
+                metadata=[HeaderStatusMetric(label="身份", value="正在退出")],
+                actions=[],
+                refresh_after_ms=1000,
+                updated_at=now,
+            )
+        if status.state == "unavailable" and status.last_error:
+            now = self._clock()
+            actions: list[HeaderStatusAction] = [
+                HeaderStatusAction(
+                    id="models",
+                    label="模型列表",
+                    kind="page",
+                )
+            ]
+            if status.ui.login_enabled:
+                actions.append(
+                    HeaderStatusAction(
+                        id="account",
+                        label="退出登录" if status.signed_in else "登录笔枢",
+                        kind="request",
+                        endpoint="/api/public-api/login",
+                        method="DELETE" if status.signed_in else "POST",
+                    )
+                )
+            return HeaderStatus(
+                visible=True,
+                label="公益",
+                value="异常",
+                title="公益模型更新异常",
+                summary=f"更新失败：{status.last_error}",
+                tone="critical",
+                metrics=[],
+                metadata=[
+                    HeaderStatusMetric(
+                        label="身份",
+                        value=self._identity_label(status),
+                    )
+                ],
+                actions=actions,
                 updated_at=now,
             )
         if status.state not in {"active", "degraded"} or status.quota is None:
