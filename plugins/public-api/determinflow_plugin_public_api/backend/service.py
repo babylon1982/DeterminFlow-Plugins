@@ -421,8 +421,6 @@ class PublicApiCredentialService:
                 )
 
         parsed = self._validate_credential_response(response)
-        if session is not None and parsed["account_balance_usd"] is None:
-            raise PortalRequestError("invalid_response", "公益模型账户余额暂不可用")
         catalog = await self.catalog.fetch(
             parsed["base_url"],
             parsed["api_key"],
@@ -612,14 +610,13 @@ class PublicApiCredentialService:
                 )
             )
 
-        metrics: list[HeaderStatusMetric] = []
-        if is_account:
-            metrics.append(
-                HeaderStatusMetric(
-                    label="公益可用",
-                    value=self._money(status.quota.remaining_usd),
-                )
+        metrics: list[HeaderStatusMetric] = [
+            HeaderStatusMetric(
+                label="公益可用",
+                value=self._money(status.quota.remaining_usd),
             )
+        ]
+        if is_account:
             metrics.append(
                 HeaderStatusMetric(
                     label="充值余额",
@@ -632,7 +629,7 @@ class PublicApiCredentialService:
             )
             metrics.append(
                 HeaderStatusMetric(
-                    label="本周公益",
+                    label="本周限额余量",
                     value=self._money(
                         max(
                             0,
@@ -646,7 +643,7 @@ class PublicApiCredentialService:
             if status.quota.daily_limit_usd > 0:
                 metrics.append(
                     HeaderStatusMetric(
-                        label="今日可用",
+                        label="今日限额余量",
                         value=self._money(
                             max(
                                 0,
@@ -659,7 +656,7 @@ class PublicApiCredentialService:
             if status.quota.weekly_limit_usd > 0:
                 metrics.append(
                     HeaderStatusMetric(
-                        label="本周可用",
+                        label="本周限额余量",
                         value=self._money(
                             max(
                                 0,
@@ -674,11 +671,15 @@ class PublicApiCredentialService:
             visible=True,
             label="余",
             value=self._money(amount),
-            title="公益模型可用额度" if is_account else "公益模型匿名额度",
+            title="公益模型额度",
             summary=(
                 "请在浏览器完成登录"
                 if status.login_pending
-                else status.ui.attribution
+                else (
+                    f"更新失败：{status.last_error}"
+                    if status.last_error
+                    else status.ui.attribution
+                )
             ),
             summary_href=status.ui.official_url,
             tone=tone,
@@ -687,6 +688,10 @@ class PublicApiCredentialService:
                 HeaderStatusMetric(
                     label="身份",
                     value=self._identity_label(status),
+                ),
+                HeaderStatusMetric(
+                    label="额度状态",
+                    value=self._tier_label(status.access_tier),
                 ),
                 HeaderStatusMetric(
                     label="有效期至",
@@ -709,8 +714,8 @@ class PublicApiCredentialService:
     @staticmethod
     def _tier_label(tier: str | None) -> str:
         return {
-            "anonymous": "匿名",
-            "authenticated": "已登录",
+            "anonymous": "标准",
+            "authenticated": "登录权益",
             "restricted": "受限",
         }.get(tier, "未知")
 
@@ -723,7 +728,7 @@ class PublicApiCredentialService:
                 else ""
             )
             return f"已登录{suffix}"
-        return cls._tier_label(status.access_tier)
+        return "匿名"
 
     @staticmethod
     def _display_time(value: datetime | None) -> str:

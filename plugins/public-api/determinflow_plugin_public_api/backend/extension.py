@@ -35,7 +35,7 @@ class PublicApiExtension:
     manifest = ExtensionManifest(
         extension_id="public-api",
         name="笔枢公益模型",
-        version="0.1.26",
+        version="0.1.27",
     )
 
     def __init__(self) -> None:

@@ -78,7 +78,13 @@ h2 { font-size: 1rem; }
 .details dt { color: #64748b; font-size: 0.75rem; }
 .details dd { margin: 7px 0 0; overflow-wrap: anywhere; color: #f1f5f9; font-size: 0.9rem; }
 
-.error { margin-top: 16px; color: #fda4af; font-size: 0.88rem; }
+.error {
+  margin-top: 16px;
+  border-left: 2px solid #e11d48;
+  padding-left: 12px;
+  color: #fda4af;
+  font-size: 0.88rem;
+}
 [hidden] { display: none !important; }
 
 .catalog { margin-top: 26px; }

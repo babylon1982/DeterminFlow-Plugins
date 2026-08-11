@@ -3,6 +3,7 @@ const elements = {
   state: document.querySelector("#state"),
   tier: document.querySelector("#tier"),
   available: document.querySelector("#available"),
+  publicBenefit: document.querySelector("#public-benefit"),
   dailyBenefit: document.querySelector("#daily-benefit"),
   weeklyBenefit: document.querySelector("#weekly-benefit"),
   wallet: document.querySelector("#wallet"),
@@ -62,12 +63,14 @@ function stateLabel(state) {
   }[state] || "未知";
 }
 
-function tierLabel(tier) {
-  return {
-    anonymous: "匿名额度",
-    authenticated: "登录额度",
+function accessLabel(status) {
+  const identity = status.signed_in ? "已登录" : "匿名";
+  const quotaState = {
+    anonymous: "标准额度",
+    authenticated: "登录权益",
     restricted: "受限额度",
-  }[tier] || "—";
+  }[status.access_tier] || "额度未知";
+  return `${identity} · ${quotaState}`;
 }
 
 function money(value) {
@@ -194,14 +197,18 @@ function render(status) {
         ? `已登录${status.account_display_name ? ` · ${status.account_display_name}` : "笔枢账号"}`
         : `匿名体验 · ${status.models.length} 个可用模型`))
     : (status.last_error || "暂时无法获取公益模型额度");
-  elements.tier.textContent = tierLabel(status.access_tier);
+  elements.tier.textContent = accessLabel(status);
   const benefitAvailable = status.quota?.remaining_usd;
   const wallet = status.signed_in ? status.account_balance_usd : null;
   const availableBalance = Number.isFinite(benefitAvailable)
     ? benefitAvailable + (Number.isFinite(wallet) ? wallet : 0)
     : null;
   elements.available.textContent = money(availableBalance);
-  elements.dailyBenefit.textContent = money(benefitAvailable);
+  elements.publicBenefit.textContent = money(benefitAvailable);
+  elements.dailyBenefit.textContent = money(remaining(
+    status.quota?.daily_limit_usd,
+    status.quota?.daily_used_usd,
+  ));
   elements.weeklyBenefit.textContent = money(remaining(
     status.quota?.weekly_limit_usd,
     status.quota?.weekly_used_usd,

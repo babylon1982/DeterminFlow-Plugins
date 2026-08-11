@@ -283,20 +283,29 @@ def test_anonymous_credential_becomes_default_without_duplicate_key_storage(
         assert status.account_balance_usd is None
         assert status.header_status is not None
         assert status.header_status.value == "¥0.75"
-        assert status.header_status.title == "公益模型匿名额度"
+        assert status.header_status.title == "公益模型额度"
         assert status.header_status.summary == "由笔枢写作（网页版）免费提供"
         assert status.header_status.summary_href == "https://bishuxiezuo.cn/"
         assert [metric.label for metric in status.header_status.metrics] == [
-            "今日可用",
-            "本周可用",
+            "公益可用",
+            "今日限额余量",
+            "本周限额余量",
+        ]
+        assert [metric.value for metric in status.header_status.metrics] == [
+            "¥0.75",
+            "¥1.25",
+            "¥4.75",
         ]
         assert [item.label for item in status.header_status.metadata] == [
             "身份",
+            "额度状态",
             "有效期至",
             "更新时间",
         ]
-        assert status.header_status.metadata[1].value == "08-09 16:00"
-        assert status.header_status.metadata[2].value == "08-08 16:00"
+        assert status.header_status.metadata[0].value == "匿名"
+        assert status.header_status.metadata[1].value == "标准"
+        assert status.header_status.metadata[2].value == "08-09 16:00"
+        assert status.header_status.metadata[3].value == "08-08 16:00"
         assert [action.id for action in status.header_status.actions] == [
             "models",
             "account",
@@ -603,11 +612,11 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
         assert status.account_display_name == "测试作者"
         assert status.header_status is not None
         assert status.header_status.value == "¥9.25"
-        assert status.header_status.title == "公益模型可用额度"
+        assert status.header_status.title == "公益模型额度"
         assert [metric.label for metric in status.header_status.metrics] == [
             "公益可用",
             "充值余额",
-            "本周公益",
+            "本周限额余量",
         ]
         assert [metric.value for metric in status.header_status.metrics] == [
             "¥0.75",
@@ -615,6 +624,7 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
             "¥8.75",
         ]
         assert status.header_status.metadata[0].value == "已登录 · 测试作者"
+        assert status.header_status.metadata[1].value == "登录权益"
         assert status.renewal_due_at == now + timedelta(days=6)
         assert authorizations == ["Bearer access-old", "Bearer access-new"]
         assert browser_auth.installation_ids == [service.state["installation_id"]]
@@ -624,7 +634,9 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
     asyncio.run(scenario())
 
 
-def test_failed_authenticated_refresh_restores_anonymous_status(tmp_path: Path) -> None:
+def test_login_accepts_authenticated_credential_when_wallet_is_unavailable(
+    tmp_path: Path,
+) -> None:
     async def scenario() -> None:
         now = datetime(2026, 8, 8, 8, tzinfo=UTC)
 
@@ -654,11 +666,15 @@ def test_failed_authenticated_refresh_restores_anonymous_status(tmp_path: Path) 
         await login_task
         status = service.status()
 
-        assert status.signed_in is False
-        assert status.access_tier == "anonymous"
-        assert status.last_error == "公益模型账户余额暂不可用"
+        assert status.signed_in is True
+        assert status.access_tier == "authenticated"
+        assert status.account_balance_usd is None
+        assert status.last_error is None
         assert status.header_status is not None
-        assert status.header_status.title == "公益模型匿名额度"
+        assert status.header_status.title == "公益模型额度"
+        assert status.header_status.metadata[0].value == "已登录"
+        assert status.header_status.metadata[1].value == "登录权益"
+        assert status.header_status.metrics[1].value == "—"
 
     asyncio.run(scenario())
 
@@ -945,6 +961,9 @@ def test_restricted_credential_uses_anonymous_renewal_window(tmp_path: Path) -> 
 
         assert status.signed_in is True
         assert status.access_tier == "restricted"
+        assert status.header_status is not None
+        assert status.header_status.metadata[0].value == "已登录"
+        assert status.header_status.metadata[1].value == "受限"
         assert status.renewal_due_at == now + timedelta(hours=18)
 
     asyncio.run(scenario())
