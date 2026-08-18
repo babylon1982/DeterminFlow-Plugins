@@ -39,16 +39,28 @@ class PublicApiClientUI(BaseModel):
     model_page_recharge_enabled: bool = False
     payment_url: str | None = None
     recharge_ratio: float = Field(default=0.8, gt=0, le=1)
-    provider_display_name: str = Field(default="笔枢公益模型", min_length=1, max_length=80)
-    attribution: str = Field(default="由笔枢写作（网页版）免费提供", min_length=1, max_length=160)
-    service_notice: str = Field(default=(
-        "本服务由笔枢写作公益提供。上游来自第三方，不保证配额、稳定性与数据安全，"
-        "仅供体验项目使用；长期使用强烈建议自行购买模型官方 API。"
-    ), min_length=1, max_length=600)
+    provider_display_name: str = Field(
+        default="笔枢公益模型", min_length=1, max_length=80
+    )
+    attribution: str = Field(
+        default="由笔枢写作（网页版）免费提供", min_length=1, max_length=160
+    )
+    service_notice: str = Field(
+        default=(
+            "本服务由笔枢写作公益提供。上游来自第三方，不保证配额、稳定性与数据安全，"
+            "仅供体验项目使用；长期使用强烈建议自行购买模型官方 API。"
+        ),
+        min_length=1,
+        max_length=600,
+    )
     official_url: str = "https://bishuxiezuo.cn/"
     top_up_title: str = Field(default="笔枢点数充值", min_length=1, max_length=120)
-    top_up_subtitle: str = Field(default="充值金额进入当前账号。", min_length=1, max_length=240)
-    top_up_ratio_notice: str = Field(default="当前比例 {ratio}。", min_length=1, max_length=240)
+    top_up_subtitle: str = Field(
+        default="充值金额进入当前账号。", min_length=1, max_length=240
+    )
+    top_up_ratio_notice: str = Field(
+        default="当前比例 {ratio}。", min_length=1, max_length=240
+    )
 
     @field_validator("official_url")
     @classmethod
@@ -75,6 +87,28 @@ class PublicModelCatalogItem(BaseModel):
     id: str
     display_name: str
     prices: list[PublicModelPriceTier]
+
+
+class PublicApiAnnouncement(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    id: str = Field(min_length=1, max_length=36)
+    title: str = Field(min_length=1, max_length=255)
+    body: str = Field(min_length=1, max_length=4000)
+    level: Literal["info", "maintenance", "warning"]
+    published_at: datetime
+    expires_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_active_window(self) -> PublicApiAnnouncement:
+        if self.published_at.tzinfo is None or self.published_at.utcoffset() is None:
+            raise ValueError("published_at must include a timezone")
+        if self.expires_at is not None:
+            if self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None:
+                raise ValueError("expires_at must include a timezone")
+            if self.expires_at <= self.published_at:
+                raise ValueError("expires_at must be later than published_at")
+        return self
 
 
 class HeaderStatusMetric(BaseModel):
@@ -111,6 +145,7 @@ class PublicApiStatus(BaseModel):
     signed_in: bool
     login_pending: bool = False
     access_tier: Literal["anonymous", "authenticated", "restricted"] | None
+    balance_tier: Literal["free", "paid"] | None
     provider_id: str | None
     models: list[str]
     model_catalog: list[PublicModelCatalogItem]
@@ -121,6 +156,7 @@ class PublicApiStatus(BaseModel):
     quota: PublicApiQuota | None
     account_balance_usd: float | None
     account_display_name: str | None = Field(default=None, max_length=80)
+    announcements: list[PublicApiAnnouncement] = Field(default_factory=list)
     login_endpoint: str = "/api/public-api/login"
     ui: PublicApiClientUI
     header_status: HeaderStatus | None

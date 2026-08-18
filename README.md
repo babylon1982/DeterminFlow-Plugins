@@ -9,7 +9,7 @@ Plugin 可以扩展 Workflow、Agent、Prompt、Script Library（脚本库）和
 | Plugin | 能力 |
 |---|---|
 | [`bishu-novel`](plugins/bishu-novel) | 无数据库、无 UUID 的本地小说生产流程 |
-| [`public-api`](plugins/public-api) | 笔枢公益模型登录、模型目录、额度状态和 Provider（供应商）接入 |
+| [`public-api`](plugins/public-api) | 笔枢公益模型登录、模型目录、额度状态、独立公告、余额档位和 Provider（供应商）接入 |
 
 ## 安装
 

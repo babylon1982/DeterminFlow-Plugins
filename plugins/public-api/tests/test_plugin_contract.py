@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import tomllib
+from determinflow_plugin_public_api.backend import extension as extension_module
+from determinflow_plugin_public_api.backend.extension import create_extension
 from fastapi import FastAPI
 from src.extension_api import ExtensionManifest
 from src.extension_api.registrar import ExtensionContributions, ExtensionRegistrar
-
-from determinflow_plugin_public_api.backend import extension as extension_module
-from determinflow_plugin_public_api.backend.extension import create_extension
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,7 +25,7 @@ def test_manifest_catalog_and_static_page_define_one_optional_plugin() -> None:
 
     assert extension["id"] == "public-api"
     assert extension["name"] == "笔枢公益模型"
-    assert extension["version"] == "0.1.31"
+    assert extension["version"] == "0.1.32"
     assert extension["description"] == "由笔枢写作免费提供的模型体验服务。"
     assert extension["backend"].startswith("determinflow_plugin_public_api.")
     assert "settings" not in manifest
@@ -70,7 +69,7 @@ def test_extension_is_inert_outside_windows_desktop(
         manifest = ExtensionManifest(
             extension_id="public-api",
             name="笔枢公益模型",
-            version="0.1.31",
+            version="0.1.32",
         )
         contributions = ExtensionContributions()
         extension.register(ExtensionRegistrar(manifest, contributions))
@@ -119,14 +118,19 @@ def test_ui_uses_external_browser_login_without_collecting_credentials() -> None
     assert "model_page_recharge_enabled" in script
     assert "provider_display_name" in script
     assert 'id="service-notice"' in page
+    assert 'id="announcement-feed"' in page
+    assert "renderAnnouncements(status.announcements)" in script
+    assert "title.textContent = item.title" in script
+    assert "body.textContent = item.body" in script
+    assert 'status.balance_tier === "paid"' in script
     assert "noopener,noreferrer" in script
     assert "original_input_price" in script
     assert "original_cache_hit_price" in script
     assert 'renderPriceCell(model.prices, "cache_hit_price")' in script
     assert "price-original" in script
     assert "value.append(original)" in script
-    assert 'function renderModelCell(model)' in script
-    assert 'label.textContent = text' in script
+    assert "function renderModelCell(model)" in script
+    assert "label.textContent = text" in script
     assert 'cell.className = "price-cell"' in script
     assert 'label.setAttribute("aria-hidden", "true")' not in script
     assert 'value.className = "price-value"' in script

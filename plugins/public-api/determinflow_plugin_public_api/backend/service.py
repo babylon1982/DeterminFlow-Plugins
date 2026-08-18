@@ -18,6 +18,7 @@ from .models import (
     HeaderStatus,
     HeaderStatusAction,
     HeaderStatusMetric,
+    PublicApiAnnouncement,
     PublicApiClientUI,
     PublicApiQuota,
     PublicApiStatus,
@@ -68,6 +69,7 @@ class PublicApiCredentialService:
         self._logout_in_progress = False
         self._browser_auth = browser_auth or BrowserAuthorizationFlow()
         self._runtime_ui: PublicApiClientUI | None = None
+        self._runtime_announcements: list[PublicApiAnnouncement] = []
         self._runtime_ui_fetched_at: datetime | None = None
         self.state = self._load_state()
 
@@ -122,9 +124,8 @@ class PublicApiCredentialService:
 
     async def start(self) -> None:
         await self.refresh_client_config(force=True)
-        if (
-            (self._runtime_ui is None or self._runtime_ui.service_enabled)
-            and (self._credential() is not None or self._session() is not None)
+        if (self._runtime_ui is None or self._runtime_ui.service_enabled) and (
+            self._credential() is not None or self._session() is not None
         ):
             await self.ensure_credential(force=True)
         if self.portal is not None and self._scheduler_task is None:
@@ -184,11 +185,19 @@ class PublicApiCredentialService:
             or not account_display_name.strip()
         ):
             account_display_name = None
+        balance_tier = None
+        if credential and credential.get("access_tier") == "authenticated":
+            balance_tier = (
+                "paid"
+                if isinstance(account_balance, (int, float)) and account_balance > 0
+                else "free"
+            )
         response = PublicApiStatus(
             state=state_name,
             signed_in=signed_in,
             login_pending=self._login_task is not None and not self._login_task.done(),
             access_tier=credential.get("access_tier") if credential else None,
+            balance_tier=balance_tier,
             provider_id=credential.get("provider_id") if credential else None,
             models=list(credential.get("models") or []) if credential else [],
             model_catalog=list(credential.get("model_catalog") or [])
@@ -203,6 +212,7 @@ class PublicApiCredentialService:
             quota=quota,
             account_balance_usd=account_balance,
             account_display_name=account_display_name,
+            announcements=list(self._runtime_announcements),
             ui=ui,
             header_status=None,
         )
@@ -219,14 +229,23 @@ class PublicApiCredentialService:
             and now - self._runtime_ui_fetched_at < timedelta(seconds=60)
         ):
             return self.status()
+        runtime_ui: PublicApiClientUI | None = None
         try:
             body = await self.portal.client_config()
             runtime_ui = PublicApiClientUI.model_validate(body)
         except (PortalRequestError, TypeError, ValueError):
-            return self.status()
-        self._runtime_ui = runtime_ui
-        self._runtime_ui_fetched_at = now
-        if not runtime_ui.service_enabled:
+            pass
+        else:
+            self._runtime_ui = runtime_ui
+            self._runtime_ui_fetched_at = now
+        try:
+            announcements = await self.portal.announcements()
+            self._runtime_announcements = [
+                PublicApiAnnouncement.model_validate(item) for item in announcements
+            ]
+        except (PortalRequestError, TypeError, ValueError):
+            pass
+        if runtime_ui is not None and not runtime_ui.service_enabled:
             credential = self._credential()
             if credential:
                 try:
@@ -435,9 +454,7 @@ class PublicApiCredentialService:
         parsed["models"] = catalog["models"]
         parsed["models_config"] = catalog["models_config"]
         parsed["model_catalog"] = catalog["model_catalog"]
-        parsed["provider_display_name"] = self._client_ui(
-            parsed
-        ).provider_display_name
+        parsed["provider_display_name"] = self._client_ui(parsed).provider_display_name
         previous = credential
         await self.providers.apply(parsed)
         if previous and previous.get("provider_id") != parsed["provider_id"]:
@@ -509,10 +526,7 @@ class PublicApiCredentialService:
                     or len(account_display_name.strip()) > 80
                 )
             )
-            or (
-                ui.payment_enabled
-                and not payment_allowed
-            )
+            or (ui.payment_enabled and not payment_allowed)
             or expires_at is None
             or expires_at <= self._clock() + timedelta(minutes=1)
         ):
@@ -729,7 +743,7 @@ class PublicApiCredentialService:
             ),
             HeaderStatusMetric(
                 label="额度状态",
-                value=self._tier_label(status.access_tier),
+                value=self._tier_label(status),
             ),
             HeaderStatusMetric(
                 label="有效期至",
@@ -769,12 +783,13 @@ class PublicApiCredentialService:
         return f"¥{value:.2f}"
 
     @staticmethod
-    def _tier_label(tier: str | None) -> str:
+    def _tier_label(status: PublicApiStatus) -> str:
+        if status.access_tier == "authenticated":
+            return "充值模型组" if status.balance_tier == "paid" else "免费模型组"
         return {
             "anonymous": "标准",
-            "authenticated": "登录权益",
             "restricted": "受限",
-        }.get(tier, "未知")
+        }.get(status.access_tier, "未知")
 
     @classmethod
     def _identity_label(cls, status: PublicApiStatus) -> str:

@@ -55,14 +55,14 @@ class PublicApiPortalClient:
         self.app_version = app_version
         self.transport = transport
 
-    async def _request(
+    async def _request_json(
         self,
         method: str,
         path: str,
         *,
         payload: dict[str, Any] | None = None,
         access_token: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> Any:
         headers = {
             "Accept": "application/json",
             "User-Agent": f"DeterminFlow-Public-API-Plugin/{self.app_version}",
@@ -105,6 +105,22 @@ class PublicApiPortalClient:
                 "invalid_response",
                 "公益模型服务返回了无效响应",
             ) from exc
+        return body
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: dict[str, Any] | None = None,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
+        body = await self._request_json(
+            method,
+            path,
+            payload=payload,
+            access_token=access_token,
+        )
         if not isinstance(body, dict):
             raise PortalRequestError("invalid_response", "公益模型服务返回了无效响应")
         return body
@@ -179,6 +195,14 @@ class PublicApiPortalClient:
 
     async def client_config(self) -> dict[str, Any]:
         return await self._request("GET", "/api/public-api/client-config")
+
+    async def announcements(self) -> list[dict[str, Any]]:
+        body = await self._request_json("GET", "/api/public-api/announcements")
+        if not isinstance(body, list) or not all(
+            isinstance(item, dict) for item in body
+        ):
+            raise PortalRequestError("invalid_response", "公益模型公告返回了无效响应")
+        return body
 
     @staticmethod
     def _parse_tokens(body: dict[str, Any]) -> dict[str, str]:

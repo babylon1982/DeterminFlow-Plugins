@@ -9,7 +9,6 @@ from typing import Any
 
 import httpx
 import pytest
-
 from determinflow_plugin_public_api.backend.catalog import (
     PublicModelCatalogClient,
 )
@@ -153,6 +152,7 @@ def build_service(
     release_channel: str = "stable",
     browser_auth: Any = None,
     client_config: dict[str, Any] | None = None,
+    announcements: list[dict[str, Any]] | None = None,
 ) -> tuple[PublicApiCredentialService, FakeProviderGateway]:
     providers = FakeProviderGateway()
     default_client_config = {
@@ -174,6 +174,8 @@ def build_service(
     def portal_handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/public-api/client-config":
             return httpx.Response(200, json=client_config or default_client_config)
+        if request.url.path == "/api/public-api/announcements":
+            return httpx.Response(200, json=announcements or [])
         return handler(request)
 
     portal = PublicApiPortalClient(
@@ -266,6 +268,39 @@ def test_runtime_client_config_updates_copy_and_disables_managed_provider(
         status = await service.refresh_client_config(force=True)
         assert status.state == "disabled"
         assert "determinflow-public" not in providers.providers
+
+    asyncio.run(scenario())
+
+
+def test_status_exposes_dedicated_public_model_announcements(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        now = datetime(2026, 8, 8, 8, tzinfo=UTC)
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=credential_response(now))
+
+        service, _providers = build_service(
+            tmp_path,
+            handler,
+            clock=lambda: now,
+            announcements=[
+                {
+                    "id": "announcement-one",
+                    "title": "模型维护通知",
+                    "body": "今晚 23:00 进行短时维护。",
+                    "level": "maintenance",
+                    "published_at": now.isoformat(),
+                    "expires_at": (now + timedelta(days=1)).isoformat(),
+                }
+            ],
+        )
+
+        status = await service.refresh_client_config(force=True)
+
+        assert len(status.announcements) == 1
+        assert status.announcements[0].title == "模型维护通知"
+        assert status.announcements[0].level == "maintenance"
+        assert status.ui.service_notice == "仅供体验。"
 
     asyncio.run(scenario())
 
@@ -613,9 +648,7 @@ def test_repeated_login_and_logout_never_hides_header_status(tmp_path: Path) -> 
             if request.url.path == "/api/desktop-auth/logout":
                 return httpx.Response(204)
             access_tier = (
-                "authenticated"
-                if request.headers.get("authorization")
-                else "anonymous"
+                "authenticated" if request.headers.get("authorization") else "anonymous"
             )
             return httpx.Response(
                 200,
@@ -724,6 +757,7 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
         assert status.signed_in is True
         assert status.access_tier == "authenticated"
         assert status.account_balance_usd == 8.5
+        assert status.balance_tier == "paid"
         assert status.account_display_name == "测试作者"
         assert status.header_status is not None
         assert status.header_status.label == "公益"
@@ -740,7 +774,7 @@ def test_login_refreshes_session_and_issues_seven_day_credential(
             "¥8.75",
         ]
         assert status.header_status.metadata[0].value == "已登录 · 测试作者"
-        assert status.header_status.metadata[1].value == "登录权益"
+        assert status.header_status.metadata[1].value == "充值模型组"
         assert status.renewal_due_at == now + timedelta(days=6)
         assert authorizations == ["Bearer access-old", "Bearer access-new"]
         assert browser_auth.installation_ids == [service.state["installation_id"]]
@@ -785,17 +819,20 @@ def test_login_accepts_authenticated_credential_when_wallet_is_unavailable(
         assert status.signed_in is True
         assert status.access_tier == "authenticated"
         assert status.account_balance_usd is None
+        assert status.balance_tier == "free"
         assert status.last_error is None
         assert status.header_status is not None
         assert status.header_status.title == "公益模型额度"
         assert status.header_status.metadata[0].value == "已登录"
-        assert status.header_status.metadata[1].value == "登录权益"
+        assert status.header_status.metadata[1].value == "免费模型组"
         assert status.header_status.metrics[1].value == "—"
 
     asyncio.run(scenario())
 
 
-def test_status_survives_a_legacy_session_without_account_balance(tmp_path: Path) -> None:
+def test_status_survives_a_legacy_session_without_account_balance(
+    tmp_path: Path,
+) -> None:
     async def scenario() -> None:
         now = datetime(2026, 8, 8, 8, tzinfo=UTC)
 
@@ -1112,7 +1149,9 @@ def test_restricted_credential_uses_lower_daily_limit_and_anonymous_renewal_wind
             expected_daily_remaining,
             "¥4.75",
         ]
-        assert all(metric.label != "充值余额" for metric in status.header_status.metrics)
+        assert all(
+            metric.label != "充值余额" for metric in status.header_status.metrics
+        )
         assert status.header_status.metadata[0].value == "已登录"
         assert status.header_status.metadata[1].value == "受限"
         assert status.renewal_due_at == now + timedelta(hours=18)

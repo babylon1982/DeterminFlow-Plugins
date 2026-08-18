@@ -16,6 +16,8 @@ const elements = {
   pageTitle: document.querySelector("#page-title"),
   officialLink: document.querySelector("#official-link"),
   serviceNotice: document.querySelector("#service-notice"),
+  announcementFeed: document.querySelector("#announcement-feed"),
+  announcementList: document.querySelector("#announcement-list"),
 };
 
 let currentStatus = null;
@@ -64,11 +66,15 @@ function stateLabel(state) {
 
 function accessLabel(status) {
   const identity = status.signed_in ? "已登录" : "匿名";
-  const quotaState = {
-    anonymous: "标准额度",
-    authenticated: "登录权益",
-    restricted: "受限额度",
-  }[status.access_tier] || "额度未知";
+  let quotaState = "额度未知";
+  if (status.access_tier === "authenticated") {
+    quotaState = status.balance_tier === "paid" ? "充值模型组" : "免费模型组";
+  } else {
+    quotaState = {
+      anonymous: "标准额度",
+      restricted: "受限额度",
+    }[status.access_tier] || quotaState;
+  }
   return `${identity} · ${quotaState}`;
 }
 
@@ -177,6 +183,34 @@ function renderCatalog(models) {
   }
 }
 
+function renderAnnouncements(items) {
+  elements.announcementList.replaceChildren();
+  const announcements = Array.isArray(items) ? items : [];
+  elements.announcementFeed.hidden = announcements.length === 0;
+  for (const item of announcements) {
+    const article = document.createElement("article");
+    article.className = `announcement announcement-${item.level || "info"}`;
+    const meta = document.createElement("div");
+    meta.className = "announcement-meta";
+    const level = document.createElement("span");
+    level.textContent = {
+      info: "通知",
+      maintenance: "维护",
+      warning: "提醒",
+    }[item.level] || "通知";
+    const time = document.createElement("time");
+    time.dateTime = item.published_at || "";
+    time.textContent = formatDate(item.published_at);
+    meta.append(level, time);
+    const title = document.createElement("h3");
+    title.textContent = item.title || "公益模型公告";
+    const body = document.createElement("p");
+    body.textContent = item.body || "";
+    article.append(meta, title, body);
+    elements.announcementList.append(article);
+  }
+}
+
 function render(status) {
   currentStatus = status;
   const available = status.state === "active" || status.state === "degraded";
@@ -189,6 +223,7 @@ function render(status) {
     ? ui.official_url
     : "https://bishuxiezuo.cn/";
   elements.serviceNotice.textContent = ui.service_notice ? ` ${ui.service_notice}` : "";
+  renderAnnouncements(status.announcements);
   elements.summary.textContent = available
     ? (status.login_pending
       ? "请在浏览器完成笔枢登录"
@@ -318,3 +353,7 @@ async function pollLogin() {
 void run(() => request("/status")).then(() => {
   if (currentStatus?.login_pending) void pollLogin();
 });
+
+window.setInterval(() => {
+  if (!busy && !polling) void run(() => request("/status"));
+}, 60_000);

@@ -27,6 +27,21 @@ h1 { font-size: 1.5rem; letter-spacing: -0.02em; }
 h2 { font-size: 1rem; }
 .summary { margin-top: 6px; color: #94a3b8; font-size: 0.9rem; }
 .quota-kind { margin-top: 5px; color: #64748b; font-size: 0.76rem; }
+.announcement-feed {
+  margin-top: 20px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #111c30;
+  padding: 16px;
+}
+.announcement-feed > h2 { margin-bottom: 10px; color: #cbd5e1; font-size: 0.82rem; }
+.announcement-list { display: grid; gap: 12px; }
+.announcement { border-left: 2px solid #6366f1; padding-left: 12px; }
+.announcement-maintenance { border-left-color: #f59e0b; }
+.announcement-warning { border-left-color: #f43f5e; }
+.announcement-meta { display: flex; justify-content: space-between; gap: 12px; color: #64748b; font-size: 0.72rem; }
+.announcement h3 { margin: 5px 0 4px; color: #f1f5f9; font-size: 0.9rem; }
+.announcement p { white-space: pre-wrap; overflow-wrap: anywhere; color: #cbd5e1; font-size: 0.82rem; line-height: 1.6; }
 .disclosure {
   margin-top: 18px;
   border-left: 2px solid #475569;
