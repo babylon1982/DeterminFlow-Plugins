@@ -80,14 +80,27 @@ class PublicModelCatalogClient:
         if body.get("unit") != "per_million_tokens":
             raise CatalogRequestError("公益模型目录计价单位无效")
         raw_models = body.get("models")
-        if not isinstance(raw_models, list):
+        raw_catalog = body.get("catalog_models")
+        has_full_catalog = raw_catalog is not None
+        if not isinstance(raw_models, list) or (
+            has_full_catalog and not isinstance(raw_catalog, list)
+        ):
             raise CatalogRequestError("公益模型目录格式无效")
+        if raw_catalog is None:
+            raw_catalog = raw_models
 
         allowed = set(allowed_models)
+        accessible = {
+            item.get("id")
+            for item in raw_models
+            if isinstance(item, dict)
+            and isinstance(item.get("id"), str)
+            and item.get("id") in allowed
+        }
         ordered_models: list[str] = []
         models_config: dict[str, dict[str, Any]] = {}
         model_catalog: list[dict[str, Any]] = []
-        for item in raw_models:
+        for item in raw_catalog:
             if not isinstance(item, dict):
                 continue
             model_id = item.get("id")
@@ -96,7 +109,6 @@ class PublicModelCatalogClient:
             prices = item.get("prices")
             if (
                 not isinstance(model_id, str)
-                or model_id not in allowed
                 or not isinstance(display_name, str)
                 or not display_name.strip()
                 or not isinstance(provider_type, str)
@@ -204,8 +216,6 @@ class PublicModelCatalogClient:
                 )
             if not normalized_prices:
                 continue
-            ordered_models.append(model_id)
-            models_config[model_id] = {"provider_type": provider_type}
             model_catalog.append(
                 {
                     "id": model_id,
@@ -213,6 +223,14 @@ class PublicModelCatalogClient:
                     "prices": normalized_prices,
                 }
             )
+            if model_id in accessible:
+                ordered_models.append(model_id)
+                models_config[model_id] = {"provider_type": provider_type}
+
+        if not has_full_catalog:
+            model_catalog = [
+                model for model in model_catalog if model["id"] in accessible
+            ]
 
         if not ordered_models:
             raise CatalogRequestError("当前凭据没有可用的公益模型")

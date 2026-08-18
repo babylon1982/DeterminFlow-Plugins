@@ -8,6 +8,7 @@ const elements = {
   wallet: document.querySelector("#wallet"),
   expiry: document.querySelector("#expiry"),
   modelCount: document.querySelector("#model-count"),
+  catalogNote: document.querySelector("#catalog-note"),
   catalogBody: document.querySelector("#catalog-body"),
   error: document.querySelector("#error"),
   renew: document.querySelector("#renew"),
@@ -166,7 +167,7 @@ function renderCatalog(models) {
     const cell = document.createElement("td");
     cell.colSpan = 4;
     cell.className = "empty";
-    cell.textContent = "当前分组暂无可用模型";
+    cell.textContent = "暂无模型目录";
     row.append(cell);
     elements.catalogBody.append(row);
     return;
@@ -244,6 +245,7 @@ function render(status) {
   elements.modelCount.textContent = status.models.length
     ? `${status.models.length} 个`
     : "—";
+  elements.catalogNote.textContent = `全部 ${status.model_catalog.length} 个 · 当前可用 ${status.models.length} 个；人民币 / 百万 Token，括号内为美元原价`;
   renderCatalog(status.model_catalog);
   elements.renew.textContent = available ? "刷新额度" : "重试";
   elements.account.textContent = status.login_pending

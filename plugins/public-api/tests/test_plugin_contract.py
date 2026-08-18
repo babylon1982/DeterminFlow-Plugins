@@ -25,7 +25,7 @@ def test_manifest_catalog_and_static_page_define_one_optional_plugin() -> None:
 
     assert extension["id"] == "public-api"
     assert extension["name"] == "笔枢公益模型"
-    assert extension["version"] == "0.1.32"
+    assert extension["version"] == "0.1.33"
     assert extension["description"] == "由笔枢写作免费提供的模型体验服务。"
     assert extension["backend"].startswith("determinflow_plugin_public_api.")
     assert "settings" not in manifest
@@ -69,7 +69,7 @@ def test_extension_is_inert_outside_windows_desktop(
         manifest = ExtensionManifest(
             extension_id="public-api",
             name="笔枢公益模型",
-            version="0.1.32",
+            version="0.1.33",
         )
         contributions = ExtensionContributions()
         extension.register(ExtensionRegistrar(manifest, contributions))
@@ -120,6 +120,8 @@ def test_ui_uses_external_browser_login_without_collecting_credentials() -> None
     assert 'id="service-notice"' in page
     assert 'id="announcement-feed"' in page
     assert "renderAnnouncements(status.announcements)" in script
+    assert 'id="catalog-note"' in page
+    assert "全部 ${status.model_catalog.length} 个" in script
     assert "title.textContent = item.title" in script
     assert "body.textContent = item.body" in script
     assert 'status.balance_tier === "paid"' in script
