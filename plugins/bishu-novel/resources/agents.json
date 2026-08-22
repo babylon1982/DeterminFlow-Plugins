@@ -336,7 +336,7 @@
         "novel-narrative"
       ],
       "model_params": {
-        "thinking_enabled": true,
+        "thinking_enabled": false,
         "reasoning_effort": "high",
         "temperature": 0.9,
         "top_p": 1,
