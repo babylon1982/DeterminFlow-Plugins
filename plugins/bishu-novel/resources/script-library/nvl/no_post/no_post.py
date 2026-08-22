@@ -21,17 +21,29 @@ def clean(text):
 
 
 def render_chapter(ch):
+    type_map = {"主线": "主线", "相字": "相字", "列传": "路人甲列传", "节令": "节令"}
+    ctype = ch.get("chapter_type", "")
     lines = [
         f"### 第{ch.get('number', '?')}章 · {ch.get('title', '')}",
         f"- **情节摘要**：{ch.get('summary', '—')}",
+    ]
+    if ctype:
+        lines.append(f"- **章节类型**：{type_map.get(ctype, ctype)}")
+    if ch.get('passerby'):
+        lines.append(f"- **本传路人**：{ch['passerby']}")
+    lines.extend([
         f"- **日期锚点**：{ch.get('date_anchor', '—')}",
         f"- **主场景**：{ch.get('scene', '—')}",
         f"- **节奏**：{ch.get('rhythm', '—')}",
-        f"- **本章两难**：{ch.get('dilemma', '—')}",
-        f"- **章末钩子**：{ch.get('hook', '—')}",
+    ])
+    if ch.get('dilemma'):
+        lines.append(f"- **本章两难**：{ch['dilemma']}")
+    if ch.get('hook'):
+        lines.append(f"- **章末钩子**：{ch['hook']}")
+    lines.extend([
         f"- **命钱账变动**：{ch.get('ledger', '—')}",
         f"- **世界时间推进**：{ch.get('time_advance', '?')}",
-    ]
+    ])
     return "\n".join(lines)
 
 
