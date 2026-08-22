@@ -24,7 +24,12 @@ def render_chapter(ch):
     lines = [
         f"### 第{ch.get('number', '?')}章 · {ch.get('title', '')}",
         f"- **情节摘要**：{ch.get('summary', '—')}",
+        f"- **日期锚点**：{ch.get('date_anchor', '—')}",
+        f"- **主场景**：{ch.get('scene', '—')}",
         f"- **节奏**：{ch.get('rhythm', '—')}",
+        f"- **本章两难**：{ch.get('dilemma', '—')}",
+        f"- **章末钩子**：{ch.get('hook', '—')}",
+        f"- **命钱账变动**：{ch.get('ledger', '—')}",
         f"- **世界时间推进**：{ch.get('time_advance', '?')}",
     ]
     return "\n".join(lines)

@@ -31,9 +31,17 @@ def render_volume(data):
     lines = [
         f"## 卷{vn} · {title}（第{start}-{end}章）",
         "",
+    ]
+
+    ts = data.get("time_span", {})
+    if ts:
+        lines.append(f"**时间跨度**：{ts.get('start', '?')} 至 {ts.get('end', '?')}（时间墙锚定，详见编年时刻表）")
+        lines.append("")
+
+    lines.extend([
         f"### 本卷定位",
         data.get("positioning", "—"),
-    ]
+    ])
 
     acts = data.get("acts", {})
     if acts:
@@ -55,7 +63,14 @@ def render_volume(data):
     if nodes:
         lines.extend(["", "### 本卷关键节点"])
         for n in nodes:
-            lines.append(f"- 节点{n.get('id', '?')}：{n.get('description', '—')} → 代价/后果：{n.get('consequence', '—')}")
+            anchor = n.get("date_anchor", "时间未标")
+            lines.append(f"- 节点{n.get('id', '?')}【{anchor}】：{n.get('description', '—')} → 代价/后果：{n.get('consequence', '—')}")
+
+    ha = data.get("historical_anchors", [])
+    if ha:
+        lines.extend(["", "### 时间墙锚点（历史节点，不可越过）"])
+        for h in ha:
+            lines.append(f"- {h}")
 
     chars = data.get("characters", [])
     if chars:
