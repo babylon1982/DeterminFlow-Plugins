@@ -122,7 +122,7 @@
       "node_type": "agent",
       "agent_type": "novel-outliner",
       "system_prompt_template": "",
-      "first_message": "运行近期大纲规划。目标卷号：{{volume_number}}。\n读取卷纲确定章节范围，读取已有近纲确定进度。\n- 若目标卷的近纲尚不存在 → is_new_volume=true（覆盖写入）\n- 若目标卷的近纲已存在 → 重写模式：以卷纲为准重新规划，is_new_volume=true（覆盖写入）\n直接输出纯 JSON，引擎自动保存。\\n\\n==== 本书规模 ====\\n预计篇幅：{{estimated_length}}\\n每章字数：{{words_per_chapter}}\n\n==== 最新章节号 ====\n{{latest_chapter}}\n\n==== 最新卷大纲 ====\n{{volume_outline_file}}\n\n==== 已有近期大纲 ====\n{{near_term_outline_file}}\n\n==== 故事引擎 ====\n{{story_plan_file}}\n\n==== 角色档案 ====\n{{character_profiles_file}}\n\n==== 编年时刻表（时间墙，规划前必读） ====\n{{calendar_outline_file}}\n\n==== 最新世界状态 ====\n{{latest_world_state}}\n\n==== 最新世界事件 ====\n{{latest_world_events}}\n\n==== 最新角色状态 ====\n{{latest_character_state}}",
+      "first_message": "运行近期大纲规划。目标卷号：{{volume_number}}。\n读取卷纲确定章节范围，读取已有近纲确定进度。\n- 若目标卷的近纲尚不存在 → is_new_volume=true（覆盖写入）\n- 若目标卷的近纲已存在 → 重写模式：以卷纲为准重新规划，is_new_volume=true（覆盖写入）\n直接输出纯 JSON，引擎自动保存。\\n\\n==== 本书规模 ====\\n预计篇幅：{{estimated_length}}\\n每章字数：{{words_per_chapter}}\n\n==== 最新章节号 ====\n{{latest_chapter}}\n\n==== 最新卷大纲 ====\n{{volume_outline_file}}\n\n==== 已有近期大纲 ====\n{{near_term_outline_file}}\n\n==== 故事引擎 ====\n{{story_plan_file}}\n\n==== 角色档案 ====\n{{character_profiles_file}}\n\n==== 编年时刻表（时间墙，规划前必读） ====\n{{calendar_outline_file}}\n\n==== 路人甲列传素材池与出场规则 ====\n{{passerby_pool_file}}\n\n==== 路人甲演员表（角色卡与排期，列传章按此取人） ====\n{{passersby_cast_file}}\n\n==== 相字案例卡池（相字章按卡取用，禁止自创字例） ====\n{{xiangzi_cases_file}}\n\n{{passersby_rules_file}}\n\n==== 最新世界状态 ====\n{{latest_world_state}}\n\n==== 最新世界事件 ====\n{{latest_world_events}}\n\n==== 最新角色状态 ====\n{{latest_character_state}}",
       "position": {
         "x": 60,
         "y": 350
@@ -394,6 +394,54 @@
       "default": "meta/calendar_outline.md",
       "required": false,
       "description": "全书时间主轴管道视图：逐月节令/史实大事/波及形态/米价基准。outline 各 agent 的时间墙",
+      "options": [],
+      "source_type": "input",
+      "source_node_id": "",
+      "hidden": true
+    },
+    {
+      "key": "passerby_pool_file",
+      "name": "passerby_pool_file",
+      "type": "file",
+      "default": "meta/liezhuan_pool.md",
+      "required": false,
+      "description": "",
+      "options": [],
+      "source_type": "input",
+      "source_node_id": "",
+      "hidden": true
+    },
+    {
+      "key": "passersby_rules_file",
+      "name": "passersby_rules_file",
+      "type": "file",
+      "default": "meta/passersby_rules.md",
+      "required": false,
+      "description": "",
+      "options": [],
+      "source_type": "input",
+      "source_node_id": "",
+      "hidden": true
+    },
+    {
+      "key": "passersby_cast_file",
+      "name": "路人甲演员表",
+      "type": "file",
+      "default": "meta/passersby_cast.md",
+      "required": false,
+      "description": "已定稿的路人角色卡与排期，列传章优先取用",
+      "options": [],
+      "source_type": "input",
+      "source_node_id": "",
+      "hidden": true
+    },
+    {
+      "key": "xiangzi_cases_file",
+      "name": "相字案例卡池",
+      "type": "file",
+      "default": "meta/xiangzi_cases.md",
+      "required": false,
+      "description": "繁体字理相字案例，相字章按卡取用",
       "options": [],
       "source_type": "input",
       "source_node_id": "",

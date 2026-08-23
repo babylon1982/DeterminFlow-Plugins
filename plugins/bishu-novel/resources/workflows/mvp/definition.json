@@ -623,7 +623,10 @@
         "y": 880
       },
       "var_bindings": {},
-      "node_params": {},
+      "node_params": {
+        "json_output_field": "body",
+        "json_output_field_min_chars": 2800
+      },
       "auto_flow": true,
       "enable_complete_node_task": false,
       "output_variable": "",
@@ -646,7 +649,10 @@
         "y": 510
       },
       "var_bindings": {},
-      "node_params": {},
+      "node_params": {
+        "json_output_field": "body",
+        "json_output_field_min_chars": 2800
+      },
       "auto_flow": true,
       "enable_complete_node_task": false,
       "output_variable": "",

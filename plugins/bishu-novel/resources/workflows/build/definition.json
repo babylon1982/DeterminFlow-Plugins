@@ -55,7 +55,7 @@
       "node_type": "agent",
       "agent_type": "novel-worldbuilder-society",
       "system_prompt_template": "",
-      "first_message": "【题材创意】\n{{premise}}\n\n【题材类型】\n{{genre}}\n\n【前序维度】\n核心法则：\n{{agent_corelaws_output}}\n时空地理：\n{{agent_spacetime_output}}\n\n请根据以上信息，生成世界观维度三：社会权力。你的设定必须与已确立的前序维度相容。\n\n输出语言：{{language}}。你的所有产出内容——包括文件内容、JSON 字段值、分析报告——都必须使用 {{language}}。",
+      "first_message": "【题材创意】\n{{premise}}\n\n【题材类型】\n{{genre}}\n\n【前序维度】\n核心法则：\n{{agent_corelaws_output}}\n时空地理：\n{{agent_spacetime_output}}\n\n请根据以上信息，生成世界观维度三：社会权力。你的设定必须与已确立的前序维度相容。\n\n输出语言：{{language}}。你的所有产出内容——包括文件内容、JSON 字段值、分析报告——都必须使用 {{language}}。\n\n==== 本书编年时刻表（宣和元年至三年，历史与社会维度必须与此对齐） ====\n{{calendar_outline_file}}",
       "position": {
         "x": 570,
         "y": 140
@@ -78,7 +78,7 @@
       "node_type": "agent",
       "agent_type": "novel-worldbuilder-historyculture",
       "system_prompt_template": "",
-      "first_message": "【题材创意】\n{{premise}}\n\n【题材类型】\n{{genre}}\n\n【前序维度】\n核心法则：\n{{agent_corelaws_output}}\n时空地理：\n{{agent_spacetime_output}}\n社会权力：\n{{agent_society_output}}\n\n请根据以上信息，生成世界观维度四：历史文化。你的设定必须与已确立的前序维度相容。\n\n输出语言：{{language}}。你的所有产出内容——包括文件内容、JSON 字段值、分析报告——都必须使用 {{language}}。",
+      "first_message": "【题材创意】\n{{premise}}\n\n【题材类型】\n{{genre}}\n\n【前序维度】\n核心法则：\n{{agent_corelaws_output}}\n时空地理：\n{{agent_spacetime_output}}\n社会权力：\n{{agent_society_output}}\n\n请根据以上信息，生成世界观维度四：历史文化。你的设定必须与已确立的前序维度相容。\n\n输出语言：{{language}}。你的所有产出内容——包括文件内容、JSON 字段值、分析报告——都必须使用 {{language}}。\n\n==== 本书编年时刻表（宣和元年至三年，历史与社会维度必须与此对齐） ====\n{{calendar_outline_file}}",
       "position": {
         "x": -90,
         "y": 350
@@ -519,6 +519,18 @@
       "source_type": "input",
       "source_node_id": "",
       "hidden": false
+    },
+    {
+      "key": "calendar_outline_file",
+      "name": "编年时刻表",
+      "type": "file",
+      "default": "meta/calendar_outline.md",
+      "required": false,
+      "description": "宣和元年至三年逐月大事/节令/波及/米价",
+      "options": [],
+      "source_type": "input",
+      "source_node_id": "",
+      "hidden": true
     }
   ],
   "gateways": [],
